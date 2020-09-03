@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int main(int argc, char *argv[])
+int main(int argc, char **argv)
 {
     FILE *file;
     char *file_name = argv[1];
