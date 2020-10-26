@@ -12,7 +12,8 @@ int main(int argc, char **argv)
     // TODO: Implement support for flags
     bool show_line_numbers = false;
 
-    // Must include one file name to continue
+    // TODO: Implement support for reading from the standard input (i.e. `-`)
+    // Must include at least one file name to continue
     if (argc < 2) {
         fprintf(stderr, "usage: dog [file ...]\n");
         exit(EXIT_FAILURE);
