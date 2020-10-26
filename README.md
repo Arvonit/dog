@@ -2,7 +2,7 @@
 
 A reimplentation of the cat utility.
 
-## Todos
+## Todo
 
 - [x] Print one file
 - [x] Print multiple files
