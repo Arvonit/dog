@@ -3,56 +3,79 @@
 #include <stdbool.h>
 #include <string.h>
 
-static FILE* file;
-static bool show_line_numbers = false;
-static bool read_from_stdin = false;
-
-static void parse_argument(char *argument);
-
 int main(int argc, char **argv)
 {
-    size_t buffer_size = 0;
-    int line_number = 0;
+    FILE* file;
+    int line_number;
     char *argument;
-    char *line;
-
-    // Must include at least one file name to continue
-    if (argc < 2) {
-        fprintf(stderr, "usage: dog [-n] [file ...]\n");
-        exit(EXIT_FAILURE);
-    }
+    bool show_line_numbers = false;
+    bool read_from_stdin = false;
+    int failed_read_attempts = 0;
 
     // Iterate through arguments
-    for (int i = 1; i < argc; i++) {
+    for (int i = 0; i < argc; i++) {
+        // The 0th argument is the name of the program (i.e. dog), so if there are arguments,
+        // increment the index. If there are no arguments, we will move on since we need to read
+        // from standard input instead.
+        if (i == 0 && argc > 1) {
+            i++;
+        }
+
         argument = argv[i];
-        parse_argument(argument);
-        if (file) {
-            if (show_line_numbers) {
-                line_number = 0;
-            }
-            while (getline(&line, &buffer_size, file) != -1) {
-                if (show_line_numbers) {
-                    line_number++;
-                    printf("    %2i\t", line_number);
-                }
-                printf("%s", line);
-            }
-            fclose(file);
+        
+        // TODO: Refactor this nasty conditional block
+        if (argc < 2 || strcmp(argument, "-") == 0) {
+            read_from_stdin = true;
+            file = stdin;
+        } else if (strcmp(argument, "-n") == 0 || strcmp(argument, "--number") == 0) {
+            show_line_numbers = true;
+            line_number = 1;
+            continue;
+        } else if (strcmp(argument, "--help") == 0) {
+            fprintf(stderr, "Usage: dog [-n/--number] [file ...]\n");
+            exit(EXIT_SUCCESS);
+        } else if (strncmp(argument, "-", strlen("-")) == 0 ||
+            strncmp(argument, "--", strlen("--")) == 0) {
+            fprintf(stderr, "Usage: dog [-n/--number] [file ...]\n");
+            exit(EXIT_FAILURE);
         } else {
-            if (!read_from_stdin && !show_line_numbers) {
-                fprintf(stderr, "dog: %s: No such file or directory\n", argument);
+            file = fopen(argument, "r");
+        }
+
+        // If file cannot be read, print an error and move to the next file
+        if (!file) {
+            fprintf(stderr, "dog: %s: No such file or directory\n", argument);
+            failed_read_attempts += 1;
+            continue;
+        }
+        
+        // Collect current character to read file and previous character to determine the beginning
+        // of a new line. We determine the beginning of a line if the previous character is a `\n`
+        // or -1 (for the first line in the file; a bit of a hack).
+        char curr_char;
+        char prev_char = -1;
+
+        // Read each character one-by-one in the file
+        while ((curr_char = getc(file)) != EOF) {
+            if (show_line_numbers && (prev_char == -1 || prev_char == '\n')) {
+                printf("    %2i\t", line_number);
+                line_number++;
             }
+
+            printf("%c", curr_char);
+            prev_char = curr_char;
+        }
+
+        // Only close files since standard input is not a file
+        if (!read_from_stdin) {
+            fclose(file);
         }
     }
-}
 
-static void parse_argument(char *argument) 
-{
-    if (strcmp(argument, "-") == 0) {
-        read_from_stdin = true;
-    } else if (strcmp(argument, "-n") == 0) {
-        show_line_numbers = true;
+    // Exit with failure if a file failed to be read
+    if (failed_read_attempts == 0) {
+        exit(EXIT_SUCCESS);
     } else {
-        file = fopen(argument, "r");
+        exit(EXIT_FAILURE);
     }
 }
